@@ -202,3 +202,16 @@ def generate_card_back(album_details, widthpx, heightpx):
     return im
 
 
+def generate_message_card(message, widthpx, heightpx):
+    offset = 50
+    im = Image.new('RGB', (widthpx, heightpx), (255, 255, 255))
+
+    width = im.size[0]
+    draw = ImageDraw.Draw(im)
+    message_font = ImageFont.truetype(font_bold, 50)
+
+    possible_chars = int((width - offset * 2) / message_font.getsize("a")[0])
+    multiline_message = "\n".join(textwrap.wrap(message, possible_chars))
+    draw.text((offset, offset), multiline_message, fill=(0, 0, 0), font=message_font)
+
+    return im

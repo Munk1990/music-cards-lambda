@@ -14,6 +14,10 @@ S3_CACHE_BUCKET = os.environ['CACHE_BUCKET']
 IMAGE_DIRECTORY = "files/"
 TMP_FILE_LOCATION = "/tmp/full_page.jpg"
 S3_LINK_TEMPLATE = "https://music-cards-cache.s3.amazonaws.com/"
+ERROR_TAG = "error"
+FRONT_TAG = "front"
+BACK_TAG = "back"
+IMAGE_EXTENSION = ".jpg"
 
 
 def get_front(event, context):
@@ -21,15 +25,17 @@ def get_front(event, context):
     albumlist = event["queryStringParameters"]["albums"].split(",")
     print("Printing front page for albums: %s" % albumlist)
 
-    file_name = IMAGE_DIRECTORY + "_".join("{0}".format(n) for n in albumlist) + "_front.jpg"
-    s3_url = S3_LINK_TEMPLATE + file_name
-    if cache_exists(file_name):
-        print("File exists")
-
+    file_id = IMAGE_DIRECTORY + FRONT_TAG + "_" + ("_".join("{0}".format(n) for n in albumlist))
+    s3_path = file_id + IMAGE_EXTENSION
+    if cache_exists(s3_path):
+        print("File %s exists" % (file_id + IMAGE_EXTENSION))
     else:
-        print("File does not exist")
-        get_front_page(8, "apple", albumlist, TMP_FILE_LOCATION)
-        copy_to_s3(TMP_FILE_LOCATION, S3_CACHE_BUCKET, file_name)
+        print("File %s does not exist" % (file_id + IMAGE_EXTENSION))
+        append_message = get_front_page(8, "apple", albumlist, TMP_FILE_LOCATION)
+        s3_path = file_id + append_message + IMAGE_EXTENSION
+        print("Copying to %s" % s3_path)
+        copy_to_s3(TMP_FILE_LOCATION, S3_CACHE_BUCKET, s3_path)
+    s3_url = S3_LINK_TEMPLATE + s3_path
     return {
         "statusCode": 302,
         "headers": {'Location': s3_url},
@@ -44,15 +50,17 @@ def get_back(event, context):
     albumlist = event["queryStringParameters"]["albums"].split(",")
     print("Printing back page for albums: %s" % albumlist)
 
-    file_name = IMAGE_DIRECTORY + "_".join("{0}".format(n) for n in albumlist) + "_back.jpg"
-    s3_url = S3_LINK_TEMPLATE + file_name
-    if cache_exists(file_name):
-        print("File exists")
-
+    file_id = IMAGE_DIRECTORY + BACK_TAG + "_" + ("_".join("{0}".format(n) for n in albumlist))
+    s3_path = file_id + IMAGE_EXTENSION
+    if cache_exists(file_id):
+        print("File %s exists" % (file_id + IMAGE_EXTENSION))
     else:
-        print("File does not exist")
-        get_back_page(8, "apple", albumlist, TMP_FILE_LOCATION)
-        copy_to_s3(TMP_FILE_LOCATION, S3_CACHE_BUCKET, file_name)
+        print("File %s does not exist" % (file_id + IMAGE_EXTENSION))
+        append_message = get_back_page(8, "apple", albumlist, TMP_FILE_LOCATION)
+        s3_path = file_id + append_message + IMAGE_EXTENSION
+        print("Copying to %s" % s3_path)
+        copy_to_s3(TMP_FILE_LOCATION, S3_CACHE_BUCKET, s3_path)
+    s3_url = S3_LINK_TEMPLATE + s3_path
     return {
         "statusCode": 302,
         "headers": {'Location': s3_url},
