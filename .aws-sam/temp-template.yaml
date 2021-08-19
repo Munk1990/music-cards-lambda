@@ -1,0 +1,9 @@
+Resources:
+  Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 300
+      MemorySize: 128
+      Handler: app.lambda_handler
+      CodeUri: C:\Users\mayan\Workspace\music-cards-lambda\hello_world
+      Runtime: python3.8
