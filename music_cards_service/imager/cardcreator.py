@@ -7,7 +7,6 @@ from PIL import Image, ImageDraw, ImageFont
 from colorthief import ColorThief
 
 from imager.helpertools import set_transparency, change_color_transparency, change_colors
-from metadata.albumdetails import search_songlink_album
 
 font_bold = "resources/fonts/AnonymousPro/AnonymousPro-Bold.ttf"
 font_italic = "resources/fonts/AnonymousPro/AnonymousPro-Italic.ttf"
@@ -19,6 +18,7 @@ RECORD_WATERMARK = "resources/img/record.png"
 
 
 def _fetch_dominant_color(imageUrl):
+    print("Fetching dominant color from URL:[%s]" % imageUrl)
     fd = urlopen(imageUrl)
     f = io.BytesIO(fd.read())
     color_thief = ColorThief(f)
@@ -43,13 +43,26 @@ def _draw_border(im, borderpx, linewidthpx, linecolor):
     draw.rectangle((0, 0, width, height), outline=(255, 255, 255), width=borderpx)
 
 
-def _draw_album_art(im, album_art_url, offsetpx):
+def _draw_album_art(im, album_art_url, offsetpx, theme_color):
     fd = urlopen(album_art_url)
     f = io.BytesIO(fd.read())
     album_art = Image.open(f)
+    draw = ImageDraw.Draw(im)
     width = im.size[0]
-    album_art = album_art.resize((width - 2 * offsetpx, width - 2 * offsetpx))
-    im.paste(album_art, (offsetpx, offsetpx))
+    draw.rectangle((offsetpx,offsetpx,width-offsetpx, width-offsetpx), fill=theme_color)
+    art_width = album_art.size[0]
+    art_height = album_art.size[1]
+    if art_width >= art_height:
+        art_resize_width =width - 2 * offsetpx
+        art_resize_height =int((width - 2 * offsetpx)/art_width * art_height)
+        album_art = album_art.resize((art_resize_width, art_resize_height))
+        im.paste(album_art, (offsetpx, offsetpx + int((width - 2*offsetpx - art_resize_height)/2)))
+    else:
+        art_resize_height =width - 2 * offsetpx
+        art_resize_width =int((width - 2 * offsetpx)/art_height * art_width)
+        album_art = album_art.resize((art_resize_width, art_resize_height))
+        im.paste(album_art, (offsetpx + int((width - 2*offsetpx - art_resize_width)/2), offsetpx))
+
 
 
 def _print_album_and_artist(im, album, artist, font, font_size, offset):
@@ -135,10 +148,13 @@ def _draw_print_markers(im, offset):
 
 def generate_card_front(album_details, widthpx, heightpx):
     im = Image.new('RGB', (widthpx, heightpx), (255, 255, 255))
-    theme_color = _fetch_dominant_color(album_details['albumArt'])
+    if 'albumArtLowRes' in album_details and album_details['albumArtLowRes'] is not None:
+        theme_color = _fetch_dominant_color(album_details['albumArtLowRes'])
+    else:
+        theme_color = _fetch_dominant_color(album_details['albumArt'])
     _print_watermark(im, RECORD_WATERMARK, 50, 30, theme_color, 45)
     _draw_border(im, 20, 10, theme_color)
-    _draw_album_art(im, album_details['albumArt'], 45)
+    _draw_album_art(im, album_details['albumArt'], 45, theme_color)
     _print_album_and_artist(im, album_details['albumname'], album_details['artist'], None, None, 50)
     _print_qr_code(im, album_details["songlink"], 150, 45, theme_color)
     _print_release_info(im, album_details["year"], album_details["genre"], 50, (0, 0, 0))

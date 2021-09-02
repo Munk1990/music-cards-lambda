@@ -7,13 +7,15 @@ import traceback
 import boto3
 from PIL import Image
 
+from metadata.albumdetails import populate_album
 from imager.cardcreator import generate_card_front, generate_card_back, generate_message_card
-from metadata.albumdetails import search_songlink_album
 
-SUPPORTED_MUSIC_SERVICES = {"apple": search_songlink_album}
 CARD_GENERATION = {"back": generate_card_back, "front": generate_card_front}
-
-S3_CACHE_BUCKET = os.environ['CACHE_BUCKET']
+try:
+    S3_CACHE_BUCKET = os.environ['CACHE_BUCKET']
+except KeyError:
+    S3_CACHE_BUCKET = "NullBucket"
+    print("Unable to fetch S3_CACHE_BUCKET from Environment. Setting it to [%s]" % S3_CACHE_BUCKET)
 S3_CACHE_LOCATION = "cards/"
 
 TMP_FILE_PATH = "/tmp/"
@@ -36,15 +38,15 @@ print(
     "card dimensions are Width [%d] Height [%d]" % (int(cardwidth / dpi / mmtoinch), int(cardheight / dpi / mmtoinch)))
 
 
-def get_front_page(cards_per_page, music_service, entities, output_path):
+def get_front_page(cards_per_page, urls, output_path, youtube_key):
     if cards_per_page > 8:
         raise UnboundLocalError("Can only process up to 8 cards")
     front_page = Image.new('RGB', (widthpixel, heightpixel), (255, 255, 255))
-    for counter in range(len(entities)):
+    for counter in range(len(urls)):
         try:
-            card = get_cache_or_generate_card(music_service, entities[counter], cardwidth, cardheight, "front")
+            card = get_cache_or_generate_card(urls[counter], cardwidth, cardheight, "front", youtube_key)
         except Exception as e:
-            error_message = "Unable to process entity [%s]\n" % entities[
+            error_message = "Unable to process entity [%s]\n" % urls[
                 counter] + "Error Stack trace:\n%s" % traceback.format_exc()
             print(error_message)
             card = generate_message_card(error_message, cardwidth, cardheight)
@@ -55,17 +57,17 @@ def get_front_page(cards_per_page, music_service, entities, output_path):
     front_page.save(output_path)
 
 
-def get_back_page(cards_per_page, music_service, entities, output_path):
+def get_back_page(cards_per_page, urls, output_path, youtube_key):
     if cards_per_page != 8:
         raise UnboundLocalError("Can only process 8 card template")
-    if len(entities) > 8:
+    if len(urls) > 8:
         raise UnboundLocalError("Can only process upto 8 cards")
     back_page = Image.new('RGB', (widthpixel, heightpixel), (255, 255, 255))
-    for counter in range(len(entities)):
+    for counter in range(len(urls)):
         try:
-            card = get_cache_or_generate_card(music_service, entities[counter], cardwidth, cardheight, "back")
+            card = get_cache_or_generate_card(urls[counter], cardwidth, cardheight, "back", youtube_key)
         except Exception as e:
-            error_message = "Unable to process entity [%s]\n" % entities[
+            error_message = "Unable to process entity [%s]\n" % urls[
                 counter] + "Error Stack trace:\n%s" % traceback.format_exc()
             print(error_message)
             card = generate_message_card(error_message, cardwidth, cardheight)
@@ -76,8 +78,10 @@ def get_back_page(cards_per_page, music_service, entities, output_path):
     back_page.save(output_path)
 
 
-def get_cache_or_generate_card(music_service, entity, width, height, variant):
-    file_id = "%s_%s_%s_%s_%s.jpg" % (music_service, entity, width, height, variant)
+def get_cache_or_generate_card(url, width, height, variant, youtube_key):
+    album_details = populate_album(url, youtube_key)
+    unique_album_id = album_details['entityUniqueId']
+    file_id = "%s_%s_%s_%s.jpg" % (unique_album_id, width, height, variant)
     s3_location = S3_CACHE_LOCATION + file_id
     try:
         img = fetch_from_cache(S3_CACHE_BUCKET, s3_location)
@@ -85,8 +89,6 @@ def get_cache_or_generate_card(music_service, entity, width, height, variant):
         return img
     except:
         print("Cache miss [%s]" % s3_location)
-        get_album_details = SUPPORTED_MUSIC_SERVICES[music_service.lower()]
-        album_details = get_album_details(entity)
         img = CARD_GENERATION[variant](album_details, width, height)
         img.save(TMP_FILE_PATH + variant + IMAGE_EXTN)
         copy_to_s3(TMP_FILE_PATH + variant + IMAGE_EXTN, S3_CACHE_BUCKET, s3_location)
@@ -109,4 +111,10 @@ def copy_to_s3(temp_file_location, s3_bucket, s3_path):
     s3.meta.client.upload_file(temp_file_location, s3_bucket, s3_path)
 
 
-#get_front_page(8, "apple", ['880709749', '1103770960', '1569562341'], "testout2.jpg")
+
+
+def _test_card_image(url, width, height, variant, youtube_key):
+    album_details = populate_album(url, youtube_key)
+    img = CARD_GENERATION[variant](album_details, width, height)
+    img.show()
+
