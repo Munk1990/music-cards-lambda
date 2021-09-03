@@ -10,6 +10,8 @@ albumdetailsmodel['albumname'] = None
 albumdetailsmodel['artist'] = None
 albumdetailsmodel['albumArt'] = None
 albumdetailsmodel['songlink'] = None
+albumdetailsmodel['albumid'] = None
+albumdetailsmodel['albumidtype'] = None
 
 albumdetailsmodel['year'] = None
 albumdetailsmodel['genre'] = None
@@ -33,10 +35,12 @@ def populate_album(album_url, youtube_key):
         print("Querying youtube for album url [%s]" % album_url)
         applealbumid = fetch_id_from_entityid(albumdetails['linksByPlatform']['appleMusic']['entityUniqueId'])
         albumdetails = populate_apple_details(applealbumid, albumdetails)
-    if 'youtubeMusic' in albumdetails['linksByPlatform'] and (albumdetails['year'] is None or len(albumdetails['tracks']) == 0):
+    if 'youtubeMusic' in albumdetails['linksByPlatform'] and (
+            albumdetails['year'] is None or len(albumdetails['tracks']) == 0):
         print("Querying youtube for album url [%s]" % album_url)
         youtubealbumid = fetch_id_from_entityid(albumdetails['linksByPlatform']['youtubeMusic']['entityUniqueId'])
         albumdetails = populate_youtube_details(youtubealbumid, albumdetails, youtube_key)
     print("Populated albumdetails json [%s]" % json.dumps(albumdetails, indent=4))
+    if albumdetails['genre'] is None:
+        albumdetails['genre'] = albumdetails['albumidtype']
     return albumdetails
-

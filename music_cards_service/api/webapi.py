@@ -10,7 +10,7 @@ from PIL import Image
 from metadata.albumdetails import populate_album
 from imager.cardcreator import generate_card_front, generate_card_back, generate_message_card
 
-CARD_GENERATION = {"back": generate_card_back, "front": generate_card_front}
+CARD_GENERATION = {"front": generate_card_front, "back" : generate_card_back}
 try:
     S3_CACHE_BUCKET = os.environ['CACHE_BUCKET']
 except KeyError:
@@ -111,10 +111,28 @@ def copy_to_s3(temp_file_location, s3_bucket, s3_path):
     s3.meta.client.upload_file(temp_file_location, s3_bucket, s3_path)
 
 
-
-
 def _test_card_image(url, width, height, variant, youtube_key):
     album_details = populate_album(url, youtube_key)
     img = CARD_GENERATION[variant](album_details, width, height)
     img.show()
 
+
+def get_card_for_url(url, youtube_key, local_save_location):
+    album_details = populate_album(url, youtube_key)
+    unique_album_id = "%s.%s" % (album_details["albumidtype"], album_details["albumid"])
+    response = {"url": url, "id": unique_album_id}
+    for variant in CARD_GENERATION:
+        file_id = "%s_%s_%s_%s.jpg" % (unique_album_id, cardwidth, cardheight, variant)
+        s3_location = S3_CACHE_LOCATION + file_id
+        try:
+            img = fetch_from_cache(S3_CACHE_BUCKET, s3_location)
+            print("Cache hit [%s]" % s3_location)
+        except:
+            print("Cache miss [%s]" % s3_location)
+            img = CARD_GENERATION[variant](album_details, cardwidth, cardheight)
+            img.save(local_save_location + file_id)
+            copy_to_s3(local_save_location + file_id, S3_CACHE_BUCKET, s3_location)
+        response[variant] = s3_location
+    return response
+
+#result = get_card_for_url("https://music.youtube.com/playlist?list=OLAK5uy_nPR5guXk5lmX2Jf17V4GtknNEUm9K3RHI","AIzaSyD_reRtpI8lgBSJWFKKq3jpCYMM0WT_G_k","")

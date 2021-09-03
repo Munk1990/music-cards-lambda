@@ -2,7 +2,6 @@ import io
 import textwrap
 from urllib.request import urlopen
 
-import requests
 from PIL import Image, ImageDraw, ImageFont
 from colorthief import ColorThief
 
@@ -22,12 +21,12 @@ def _fetch_dominant_color(imageUrl):
     fd = urlopen(imageUrl)
     f = io.BytesIO(fd.read())
     color_thief = ColorThief(f)
-    dominant = color_thief.get_color(quality=1)
-    pallette = color_thief.get_palette(quality=1)
+    dominant = color_thief.get_color(quality=3)
 
     if dominant[0] + dominant[1] + dominant[2] < 100 * 3:
         return dominant
     else:
+        pallette = color_thief.get_palette(quality=2)
         for color in pallette:
             if color[0] + color[1] + color[2] < 100 * 3:
                 return color
@@ -148,10 +147,15 @@ def _draw_print_markers(im, offset):
 
 def generate_card_front(album_details, widthpx, heightpx):
     im = Image.new('RGB', (widthpx, heightpx), (255, 255, 255))
-    if 'albumArtLowRes' in album_details and album_details['albumArtLowRes'] is not None:
-        theme_color = _fetch_dominant_color(album_details['albumArtLowRes'])
+    if 'themeColor' in album_details and album_details['themeColor'] is not None:
+        print("Theme color found populated. Reusing")
+        theme_color = album_details['themeColor']
     else:
-        theme_color = _fetch_dominant_color(album_details['albumArt'])
+        if 'albumArtLowRes' in album_details and album_details['albumArtLowRes'] is not None:
+            theme_color = _fetch_dominant_color(album_details['albumArtLowRes'])
+        else:
+            theme_color = _fetch_dominant_color(album_details['albumArt'])
+        album_details['themeColor'] = theme_color
     _print_watermark(im, RECORD_WATERMARK, 50, 30, theme_color, 45)
     _draw_border(im, 20, 10, theme_color)
     _draw_album_art(im, album_details['albumArt'], 45, theme_color)
@@ -209,7 +213,15 @@ def _print_tracks(im, tracks_dict, offset, album_height, color):
 
 def generate_card_back(album_details, widthpx, heightpx):
     im = Image.new('RGB', (widthpx, heightpx), (255, 255, 255))
-    theme_color = _fetch_dominant_color(album_details['albumArt'])
+    if 'themeColor' in album_details and album_details['themeColor'] is not None:
+        print("Theme color found populated. Reusing")
+        theme_color = album_details['themeColor']
+    else:
+        if 'albumArtLowRes' in album_details and album_details['albumArtLowRes'] is not None:
+            theme_color = _fetch_dominant_color(album_details['albumArtLowRes'])
+        else:
+            theme_color = _fetch_dominant_color(album_details['albumArt'])
+        album_details['themeColor'] = theme_color
     _print_watermark(im, RECORD_WATERMARK, 35, 30, theme_color, 45)
     _draw_border(im, 20, 10, theme_color)
     album_height = _print_back_album(im, album_details['albumname'], 20, theme_color)
@@ -224,7 +236,7 @@ def generate_message_card(message, widthpx, heightpx):
 
     width = im.size[0]
     draw = ImageDraw.Draw(im)
-    message_font = ImageFont.truetype(font_bold, 50)
+    message_font = ImageFont.truetype(font_bold, 25)
 
     possible_chars = int((width - offset * 2) / message_font.getsize("a")[0])
     multiline_message = "\n".join(textwrap.wrap(message, possible_chars))

@@ -11,19 +11,6 @@ Globals:
     Timeout: 300
 
 Resources:
-  HelloWorldFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      CodeUri: music_cards_service/
-      Handler: app.lambda_handler
-      Runtime: python3.8
-      Events:
-        HelloWorld:
-          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-          Properties:
-            Path: /hello
-            Method: get
-
   GetFrontFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     DependsOn:
@@ -62,6 +49,25 @@ Resources:
             Path: /back
             Method: get
 
+  GetCardFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    DependsOn:
+      - CacheBucket
+    Properties:
+      CodeUri: music_cards_service/
+      Handler: app.get_card
+      Runtime: python3.8
+      Environment:
+        Variables:
+          CACHE_BUCKET:
+            Ref: "CacheBucket"
+      Events:
+        HelloWorld:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /card
+            Method: get
+
   CacheBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -90,15 +96,6 @@ Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  HelloWorldApi:
-    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-  HelloWorldFunction:
-    Description: "Hello World Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
-  HelloWorldFunctionIamRole:
-    Description: "Implicit IAM Role created for Hello World function"
-    Value: !GetAtt HelloWorldFunctionRole.Arn
   GetFrontApi:
     Description: "API Gateway endpoint URL for Prod stage for Get Front function"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/front/"
@@ -117,3 +114,12 @@ Outputs:
   GetBackFunctionIamRole:
     Description: "Implicit IAM Role created for Get Back function"
     Value: !GetAtt GetBackFunctionRole.Arn
+  GetCardApi:
+    Description: "API Gateway endpoint URL for Prod stage for Get Card function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/card/"
+  GetCardFunction:
+    Description: "Get Card Lambda Function ARN"
+    Value: !GetAtt GetCardFunction.Arn
+  GetCardFunctionIamRole:
+    Description: "Implicit IAM Role created for Get Card function"
+    Value: !GetAtt GetCardFunctionRole.Arn

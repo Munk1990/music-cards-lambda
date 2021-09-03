@@ -2,12 +2,14 @@ import json
 import os
 import random
 import string
+import traceback
 
-from api.webapi import get_front_page, get_back_page, copy_to_s3
+from api.webapi import get_front_page, get_back_page, copy_to_s3, get_card_for_url
 
 S3_CACHE_BUCKET = os.environ['CACHE_BUCKET']
 IMAGE_DIRECTORY = "files/"
 TMP_FILE_LOCATION = "/tmp/full_page.jpg"
+TMP_FILE_PATH = "/tmp/"
 S3_LINK_TEMPLATE = "https://music-cards-cache.s3.amazonaws.com/"
 ERROR_TAG = "error"
 FRONT_TAG = "front"
@@ -21,7 +23,7 @@ def get_front(event, context):
         youtube_key = event["queryStringParameters"]["youtubeKey"]
     else:
         youtube_key = None
-    print ("youtubekey [%s]" % youtube_key)
+    print("youtubekey [%s]" % youtube_key)
     print("Printing front page for albums: %s" % albumlist)
 
     file_id = IMAGE_DIRECTORY + FRONT_TAG + "_" + lower_random_string(5)
@@ -47,7 +49,7 @@ def get_back(event, context):
         youtube_key = event["queryStringParameters"]["youtubeKey"]
     else:
         youtube_key = None
-    print ("youtubekey [%s]" % youtube_key)
+    print("youtubekey [%s]" % youtube_key)
     print("Printing back page for albums: %s" % albumlist)
 
     file_id = IMAGE_DIRECTORY + BACK_TAG + "_" + lower_random_string(5)
@@ -63,6 +65,34 @@ def get_back(event, context):
         "body": json.dumps({
             "message": s3_url,
         }),
+    }
+
+
+def get_card(event, context):
+    print("get_card function called with request: [%s]" % event)
+    albumurl = event["queryStringParameters"]["album"]
+    print("request:[%s]" % event)
+    if 'youtubeKey' in event["queryStringParameters"]:
+        youtube_key = event["queryStringParameters"]["youtubeKey"]
+    else:
+        youtube_key = None
+    response = {}
+    statusCode = 200
+    try:
+        response = get_card_for_url(albumurl, youtube_key, TMP_FILE_PATH)
+        response["s3_url_back"] = S3_LINK_TEMPLATE + response['back']
+        response["s3_url_front"] = S3_LINK_TEMPLATE + response['front']
+        statusCode: 200
+    except Exception as e:
+        statusCode: 500
+        response["exception"] = traceback.format_exc()
+    return {
+        "statusCode": statusCode,
+        "body": json.dumps(response),
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        }
     }
 
 

@@ -10,6 +10,8 @@ def populate_songlink_details(album_url, album_model):
     songlink_response_json = json.loads(requests.get(songlink_album_url).content)
     print(songlink_response_json)
     album_model['entityUniqueId'] = unique_id = songlink_response_json['entityUniqueId']
+    album_model['albumid'] = unique_id.split("::")[1]
+    album_model['albumidtype'] = unique_id.split("::")[0]
     album_model['albumname'] = songlink_response_json['entitiesByUniqueId'][unique_id]['title']
     album_model['artist'] = songlink_response_json['entitiesByUniqueId'][unique_id]['artistName']
     album_model['albumArt'] = songlink_response_json['entitiesByUniqueId'][unique_id]['thumbnailUrl']
