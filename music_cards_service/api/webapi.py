@@ -134,5 +134,3 @@ def get_card_for_url(url, youtube_key, local_save_location):
             copy_to_s3(local_save_location + file_id, S3_CACHE_BUCKET, s3_location)
         response[variant] = s3_location
     return response
-
-#result = get_card_for_url("https://music.youtube.com/playlist?list=OLAK5uy_nPR5guXk5lmX2Jf17V4GtknNEUm9K3RHI","AIzaSyD_reRtpI8lgBSJWFKKq3jpCYMM0WT_G_k","")

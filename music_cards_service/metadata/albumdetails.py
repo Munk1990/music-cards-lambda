@@ -35,12 +35,17 @@ def populate_album(album_url, youtube_key):
         print("Querying youtube for album url [%s]" % album_url)
         applealbumid = fetch_id_from_entityid(albumdetails['linksByPlatform']['appleMusic']['entityUniqueId'])
         albumdetails = populate_apple_details(applealbumid, albumdetails)
+    print("[%s][%s][%s]" % ('youtubeMusic' in albumdetails['linksByPlatform'], albumdetails['year'] is None,len(albumdetails['tracks']) == 0))
     if 'youtubeMusic' in albumdetails['linksByPlatform'] and (
             albumdetails['year'] is None or len(albumdetails['tracks']) == 0):
-        print("Querying youtube for album url [%s]" % album_url)
-        youtubealbumid = fetch_id_from_entityid(albumdetails['linksByPlatform']['youtubeMusic']['entityUniqueId'])
-        albumdetails = populate_youtube_details(youtubealbumid, albumdetails, youtube_key)
+        if youtube_key is None or len(youtube_key.strip()) == 0:
+            raise Exception("Youtube API missing. Can not process information from Google")
+        else:
+            print("Querying youtube for album url [%s]" % album_url)
+            youtubealbumid = fetch_id_from_entityid(albumdetails['linksByPlatform']['youtubeMusic']['entityUniqueId'])
+            albumdetails = populate_youtube_details(youtubealbumid, albumdetails, youtube_key)
     print("Populated albumdetails json [%s]" % json.dumps(albumdetails, indent=4))
     if albumdetails['genre'] is None:
         albumdetails['genre'] = albumdetails['albumidtype']
     return albumdetails
+

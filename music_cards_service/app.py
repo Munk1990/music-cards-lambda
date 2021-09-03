@@ -76,6 +76,7 @@ def get_card(event, context):
         youtube_key = event["queryStringParameters"]["youtubeKey"]
     else:
         youtube_key = None
+    print("Youtube Key: [%s]" % youtube_key)
     response = {}
     statusCode = 200
     try:
