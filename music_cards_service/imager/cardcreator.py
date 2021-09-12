@@ -222,7 +222,7 @@ def generate_card_back(album_details, widthpx, heightpx):
         else:
             theme_color = _fetch_dominant_color(album_details['albumArt'])
         album_details['themeColor'] = theme_color
-    _print_watermark(im, RECORD_WATERMARK, 35, 30, theme_color, 45)
+    _print_watermark(im, RECORD_WATERMARK, 50, 30, theme_color, 45)
     _draw_border(im, 20, 10, theme_color)
     album_height = _print_back_album(im, album_details['albumname'], 20, theme_color)
     _print_tracks(im, album_details["tracks"], 50, album_height, (0, 0, 0))
