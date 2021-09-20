@@ -1,5 +1,6 @@
 import io
 import textwrap
+import urllib
 from urllib.request import urlopen
 
 from PIL import Image, ImageDraw, ImageFont
@@ -12,6 +13,7 @@ font_italic = "resources/fonts/AnonymousPro/AnonymousPro-Italic.ttf"
 font_regular = "resources/fonts/AnonymousPro/AnonymousPro-Regular.ttf"
 font_ExtraCondensedExtraBold = 'resources/fonts/NotoSans/NotoSans-ExtraCondensedExtraBold.ttf'
 font_ExtraCondensed = 'resources/fonts/NotoSans/NotoSans-ExtraCondensed.ttf'
+font_Cursive = "resources/fonts/Yellowtail/Yellowtail-Regular.ttf"
 
 RECORD_WATERMARK = "resources/img/record.png"
 
@@ -80,8 +82,12 @@ def _print_album_and_artist(im, album, artist, font, font_size, offset):
               multiline_artist, fill=(0, 0, 0), font=artist_font)
 
 
+def _get_qr_url(url):
+    return "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + url
+
+
 def _print_qr_code(im, url, widthpx, offset, color):
-    qrurl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + url
+    qrurl = _get_qr_url(url)
     fd = urlopen(qrurl)
     f = io.BytesIO(fd.read())
     qr_code = Image.open(f)
@@ -243,3 +249,51 @@ def generate_message_card(message, widthpx, heightpx):
     draw.text((offset, offset), multiline_message, fill=(0, 0, 0), font=message_font)
 
     return im
+
+
+def generate_back_cover(cover_details, widthpx, heightpx):
+    offset = 50
+    im = Image.new('RGB', (widthpx, heightpx), (255, 255, 255))
+    if 'themeColor' in cover_details and cover_details['themeColor'] is not None:
+        print("Theme color found populated. Reusing")
+        theme_color = cover_details['themeColor']
+    else:
+        theme_color = (0, 0, 0)
+        cover_details['themeColor'] = theme_color
+
+    width = im.size[0]
+    draw = ImageDraw.Draw(im)
+    message_font = ImageFont.truetype(font_Cursive, 80)
+
+    possible_chars = int((width - offset * 2) / message_font.getsize("a")[0])
+    multiline_message = "\n".join(textwrap.wrap(cover_details["title"], possible_chars))
+    w, h = draw.textsize(multiline_message)
+    draw.multiline_text((width/2-message_font.getsize_multiline(multiline_message)[0]/2, width/2), multiline_message, fill=(0, 0, 0)
+              , font=message_font, align='center')
+
+    _print_watermark(im, RECORD_WATERMARK, 50, 30, theme_color, 45)
+    _draw_border(im, 20, 10, theme_color)
+    _draw_print_markers(im, 20)
+    return im
+
+
+def generate_front_cover(cover_details, widthpx, heightpx):
+    offset = 50
+    im = Image.new('RGB', (widthpx, heightpx), (255, 255, 255))
+    if 'themeColor' in cover_details and cover_details['themeColor'] is not None:
+        print("Theme color found populated. Reusing")
+        theme_color = cover_details['themeColor']
+    else:
+        theme_color = (0, 0, 0)
+        cover_details['themeColor'] = theme_color
+
+    _print_watermark(im, RECORD_WATERMARK, 50, 30, theme_color, 45)
+    _draw_border(im, 20, 10, theme_color)
+    _draw_album_art(im, _get_qr_url(urllib.parse.quote(cover_details["url"])), 45, theme_color)
+    _print_album_and_artist(im, cover_details["qr_title"], cover_details["qr_subtitle"], None, None, 50)
+    _draw_print_markers(im, 20)
+    return im
+
+
+# image = generate_back_cover({"title":"Music Cards [English Rock Essentials"}, 750, 1050)
+# image.show()

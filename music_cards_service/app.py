@@ -4,7 +4,7 @@ import random
 import string
 import traceback
 
-from api.webapi import get_front_page, get_back_page, get_card_for_url, get_card_for_album
+from api.webapi import get_card_for_url, get_card_for_album, get_cover
 
 S3_CACHE_BUCKET = os.environ['CACHE_BUCKET']
 IMAGE_DIRECTORY = "files/"
@@ -18,30 +18,44 @@ PARAMETER_FILE = "resources/_do_not_checkin/params"
 
 
 def get_front(event, context):
-    albumlist = event["queryStringParameters"]["albums"].split(",")
-    youtube_key = get_parameters_from_file(PARAMETER_FILE)["youtubeKey"]
-    response = get_front_page(albumlist, youtube_key, TMP_FILE_PATH)
-    s3_url = S3_LINK_TEMPLATE + response['front']
+    print("get_front function called with request: [%s]" % event)
+    title = event["queryStringParameters"]["title"]
+    url = event["queryStringParameters"]["url"]
+    qr_title = event["queryStringParameters"]["qr_title"]
+    qr_subtitle = event["queryStringParameters"]["qr_subtitle"]
+    cardwidth = int(event["queryStringParameters"]["cardwidth"])
+    cardheight = int(event["queryStringParameters"]["cardheight"])
+    card_id = lower_random_string(5)
+    response = {}
+    try:
+        response = get_cover(card_id, title, url, qr_title, qr_subtitle, TMP_FILE_PATH, (cardwidth, cardheight))
+        response["s3_url_back"] = S3_LINK_TEMPLATE + response['back']
+        response["s3_url_front"] = S3_LINK_TEMPLATE + response['front']
+        status_code = 200
+    except Exception as e:
+        status_code = 500
+        response["exception"] = traceback.format_exc()
     return {
-        "statusCode": 302,
-        "headers": {'Location': s3_url},
-        "body": json.dumps({
-            "message": s3_url,
-        }),
+        "statusCode": status_code,
+        "body": json.dumps(response),
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+        }
     }
 
 
 def get_back(event, context):
-    albumlist = event["queryStringParameters"]["albums"].split(",")
-    youtube_key = get_parameters_from_file(PARAMETER_FILE)["youtubeKey"]
-    response = get_back_page(albumlist, youtube_key, TMP_FILE_PATH)
-    s3_url = S3_LINK_TEMPLATE + response['back']
+    # albumlist = event["queryStringParameters"]["albums"].split(",")
+    # youtube_key = get_parameters_from_file(PARAMETER_FILE)["youtubeKey"]
+    # response = get_back_page(albumlist, youtube_key, TMP_FILE_PATH)
+    # s3_url = S3_LINK_TEMPLATE + response['back']
     return {
         "statusCode": 302,
-        "headers": {'Location': s3_url},
-        "body": json.dumps({
-            "message": s3_url,
-        }),
+        # "headers": {'Location': s3_url},
+        # "body": json.dumps({
+        #     "message": s3_url,
+        # }),
     }
 
 
@@ -53,14 +67,17 @@ def get_card(event, context):
     else:
         albumid = event["queryStringParameters"]["albumId"]
         albumprovider = event["queryStringParameters"]["provider"]
+    if "cardwidth" in event["queryStringParameters"]:
+        cardwidth = int(event["queryStringParameters"]["cardwidth"])
+        cardheight = int(event["queryStringParameters"]["cardheight"])
     print("request:[%s]" % event)
     youtube_key = get_parameters_from_file(PARAMETER_FILE)["youtubeKey"]
     response = {}
     try:
         if albumurl:
-            response = get_card_for_url(albumurl, youtube_key, TMP_FILE_PATH)
+            response = get_card_for_url(albumurl, youtube_key, TMP_FILE_PATH, (cardwidth, cardheight))
         else:
-            response = get_card_for_album(albumprovider, albumid, youtube_key, TMP_FILE_PATH)
+            response = get_card_for_album(albumprovider, albumid, youtube_key, TMP_FILE_PATH, (cardwidth, cardheight))
         response["s3_url_back"] = S3_LINK_TEMPLATE + response['back']
         response["s3_url_front"] = S3_LINK_TEMPLATE + response['front']
         status_code = 200
