@@ -29,18 +29,23 @@ def _process_json(response_json, album_model):
     album_model['albumArt'] = response_json['entitiesByUniqueId'][unique_id]['thumbnailUrl']
     album_model['songlink'] = response_json['pageUrl']
     album_model['linksByPlatform'] = response_json['linksByPlatform']
-    album_model = _fix_youtube_albumart(album_model, response_json)
+    album_model = _fix_youtube_details(album_model, response_json)
     return album_model
 
 
-def _fix_youtube_albumart(album_model, response):
+def _fix_youtube_details(album_model, response):
     if album_model['entityUniqueId'].find('YOUTUBE') > -1:
-        print("Youtube Album Art link on Song.link is known to have error [%s].\nScanning through other music "
-              "providers for album art" % album_model['albumArt'])
+        print("Youtube Album details on Song.link is known to have error [%s].\nScanning through other music "
+              "providers for album details" % album_model['albumname'])
         album_model['albumArt'] = None
+        print("Response [%s]" % response)
         for entity in response['entitiesByUniqueId']:
+            print("Entity [%s]" % entity)
             if entity.find('YOUTUBE') == -1:
                 album_model['albumArt'] = response['entitiesByUniqueId'][entity]['thumbnailUrl']
+                album_model['albumname'] = response['entitiesByUniqueId'][entity]['title']
+                album_model['artist'] = response['entitiesByUniqueId'][entity]['artistName']
                 print("Configured Album art url as [%s] from [%s]" % (album_model['albumArt'], entity))
-                return album_model
+                if entity.find('ITUNES_ALBUM') > -1:
+                    return album_model
     return album_model
