@@ -41,7 +41,7 @@ def _fix_youtube_details(album_model, response):
         print("Response [%s]" % response)
         for entity in response['entitiesByUniqueId']:
             print("Entity [%s]" % entity)
-            if entity.find('YOUTUBE') == -1:
+            if entity.find('YOUTUBE') == -1 & entity.find('SOUNDCLOUD_PLAYLIST') == -1:
                 album_model['albumArt'] = response['entitiesByUniqueId'][entity]['thumbnailUrl']
                 album_model['albumname'] = response['entitiesByUniqueId'][entity]['title']
                 album_model['artist'] = response['entitiesByUniqueId'][entity]['artistName']
